@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Exercise Lambda Stack
+
+Resources:
+  ExerciseLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: DXT-Assignment
+        S3Key: exercise-lambda.zip
+      Runtime: python3.8
+      Timeout: 10
+      Environment:
+        Variables:
+          PARAMETER_NAME: !Ref ParameterName
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaBasicExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - s3:PutObject
+                Resource: '*'
+
+Parameters:
+  ParameterName:
+    Type: String
+    Description: Name of the SSM parameter (e.g., UserName)
+
+Outputs:
+  LambdaFunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt ExerciseLambdaFunction.Arn
