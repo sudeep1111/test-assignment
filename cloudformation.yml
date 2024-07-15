@@ -8,7 +8,7 @@ Resources:
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
       Code:
-        S3Bucket: DXT-Assignment
+        S3Bucket: dxt-assignment
         S3Key: exercise-lambda.zip
       Runtime: python3.8
       Timeout: 10
