@@ -1,48 +1,76 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Exercise Lambda Stack
-
 Resources:
-  ExerciseLambdaFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Handler: index.handler
-      Role: !GetAtt LambdaExecutionRole.Arn
-      Code:
-        S3Bucket: dxt-assignment
-        S3Key: exercise-lambda.zip
-      Runtime: python3.8
-      Timeout: 10
-      Environment:
-        Variables:
-          PARAMETER_NAME: !Ref ParameterName
-
   LambdaExecutionRole:
     Type: AWS::IAM::Role
-    Properties:
+    Properties: 
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
+              Service: 
+                - lambda.amazonaws.com
+            Action: 
+              - sts:AssumeRole
       Policies:
-        - PolicyName: LambdaBasicExecutionPolicy
+        - PolicyName: LambdaS3SSMPolicy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
-                Action:
+                Action: 
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action: 
                   - ssm:GetParameter
+                Resource: arn:aws:ssm:*:*:parameter/UserName
+              - Effect: Allow
+                Action: 
                   - s3:PutObject
-                Resource: '*'
+                Resource: arn:aws:s3:::dxt-assignment/*
+  ExerciseLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          import json
 
-Parameters:
-  ParameterName:
-    Type: String
-    Description: Name of the SSM parameter (e.g., UserName)
+          def handler(event, context):
+              ssm = boto3.client('ssm')
+              s3 = boto3.client('s3')
+              
+              parameter = ssm.get_parameter(Name='UserName', WithDecryption=False)
+              user_name = parameter['Parameter']['Value']
+              
+              bucket_name = os.environ['BUCKET_NAME']
+              file_name = 'username.txt'
+              
+              s3.put_object(Bucket=bucket_name, Key=file_name, Body=user_name)
+              
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Successfully stored the SSM Parameter in S3!')
+              }
 
+      Runtime: python3.8
+      Environment:
+        Variables:
+          BUCKET_NAME: dxt-assignment
+      Timeout: 60
+      Events:
+        CFNInvoke:
+          Type: Custom::Invoke
+          Properties:
+            ServiceToken: !GetAtt ExerciseLambda.Arn
+            UserName: UserName
 Outputs:
-  LambdaFunctionArn:
-    Description: ARN of the Lambda function
-    Value: !GetAtt ExerciseLambdaFunction.Arn
+  LambdaFunction:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt ExerciseLambda.Arn
