@@ -1,16 +1,20 @@
 import boto3
 import os
+import json
 
-def lambda_handler(event, context):
+def handler(event, context):
     ssm = boto3.client('ssm')
     s3 = boto3.client('s3')
-    parameter_name = os.environ['PARAMETER_NAME']
-
-    response = ssm.get_parameter(Name=parameter_name, WithDecryption=False)
-    value = response['Parameter']['Value']
-
-    bucket_name = 'dxt-assignment'
-    key = 'user_name.txt'
-    s3.put_object(Bucket=bucket_name, Key=key, Body=value)
-
-    return f"Stored value '{value}' in S3 bucket '{bucket_name}' with key '{key}'"
+    
+    parameter = ssm.get_parameter(Name='UserName', WithDecryption=False)
+    user_name = parameter['Parameter']['Value']
+    
+    bucket_name = os.environ['BUCKET_NAME']
+    file_name = 'username.txt'
+    
+    s3.put_object(Bucket=bucket_name, Key=file_name, Body=user_name)
+    
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Successfully stored the SSM Parameter in S3!')
+    }
