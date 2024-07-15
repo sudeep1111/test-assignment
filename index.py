@@ -9,7 +9,7 @@ def lambda_handler(event, context):
     response = ssm.get_parameter(Name=parameter_name, WithDecryption=False)
     value = response['Parameter']['Value']
 
-    bucket_name = 'DXT-Assignment'
+    bucket_name = 'dxt-assignment'
     key = 'user_name.txt'
     s3.put_object(Bucket=bucket_name, Key=key, Body=value)
 
